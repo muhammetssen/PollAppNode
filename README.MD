@@ -1,6 +1,6 @@
-[] Express
-[] nodemon
-[] Mongo
+[x] Express
+[x] nodemon
+[x] Mongo
 
 
 [x] Create Poll

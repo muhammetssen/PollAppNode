@@ -1,9 +1,9 @@
+
 var express = require("express");
 const { ObjectID } = require("mongodb");
 var pollRouter = express.Router();
 const objectId = require("mongodb").ObjectID;
 
-module.exports = pollRouter
 
 
 
@@ -31,16 +31,16 @@ pollRouter.post("/create", async (req, res) => {
             'votedIPs': []
         };
         await database.collection("Polls").insertOne(Poll);
+        res.json({ "message": "Success" });
 
     } catch (error) {
         console.log(error);
+        res.json({ 'message': 'Failed' })
     }
-    res.json({ "yey": "yey" });
 });
 
 pollRouter.get('/getAll', async (req, res) => {
     try {
-        // var ip = req.headers['x-real-ip'] || req.connection.remoteAddress
         const mainApp = require('./index');
         const database = mainApp.database;
         var collection = database.collection('Polls');
@@ -49,8 +49,25 @@ pollRouter.get('/getAll', async (req, res) => {
         res.json({ 'polls': polls });
     } catch (error) {
         console.log(error);
+        res.json({ 'message': 'Failed' })
     }
 });
+
+pollRouter.get('/getSingle/:id', async (req, res) => {
+    try {
+        const mainApp = require('./index');
+        var collection = mainApp.database.collection('Polls');
+
+        var wantedPoll = await collection.find({ '_id': ObjectID(req.params.id) }).toArray();
+        res.json({ 'poll': wantedPoll });
+
+    } catch (error) {   
+        console.log(error);
+        res.json({ 'message': 'Failed' })
+    }
+});
+
+
 
 
 pollRouter.post('/vote', async (req, res) => {
@@ -63,23 +80,25 @@ pollRouter.post('/vote', async (req, res) => {
         var selectedOptionIndex = req.body.selectedOptionIndex;
         var userIP = req.ip.split(':')[3];
 
-        await collection.findOne({ '_id': ObjectID(pollId) },  (err, poll) => {
-            if (poll.IPCheck && poll.votedIPs.some((alreadyUserIP) => userIP === alreadyUserIP )) {
-                res.json({'message':'ALready voted from this IP'});
+        await collection.findOne({ '_id': ObjectID(pollId) }, (err, poll) => {
+            if (poll.IPCheck && poll.votedIPs.some((alreadyUserIP) => userIP === alreadyUserIP)) {
+                res.json({ 'message': 'ALready voted from this IP' });
                 return
-            } 
+            }
             selectedOptionIndex.forEach((index) => {
                 poll.options[Object.keys(poll.options)[index]]++
                 poll.totalVotes++;
             });
             poll.votedIPs.push(userIP);
 
-             collection.updateOne({ '_id': ObjectID(pollId) },{'$set' : {
-                totalVotes : poll.totalVotes,
-                options: poll.options,
-                votedIPs: poll.votedIPs
+            collection.updateOne({ '_id': ObjectID(pollId) }, {
+                '$set': {
+                    totalVotes: poll.totalVotes,
+                    options: poll.options,
+                    votedIPs: poll.votedIPs
 
-            }})
+                }
+            })
             res.send(200);
 
         });
@@ -90,3 +109,4 @@ pollRouter.post('/vote', async (req, res) => {
 
 
 });
+module.exports = pollRouter
