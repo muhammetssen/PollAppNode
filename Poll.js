@@ -5,6 +5,8 @@ var pollRouter = express.Router();
 const objectId = require("mongodb").ObjectID;
 
 
+let bodyParser = require('body-parser');
+pollRouter.use(bodyParser.json());
 
 
 pollRouter.post("/create", async (req, res) => {
@@ -14,14 +16,18 @@ pollRouter.post("/create", async (req, res) => {
         const database = mainApp.database;
 
         var question = req.body.question;
+        if (question == null)
+            return
         var options = {};
         var allowMultiChoice = req.body.allowMultiChoice;
         var IPCheck = req.body.IPCheck;
 
-        req.body.options.forEach((item) => {
-            options[item] = 0
-        });
         console.log(question);
+        req.body.options.forEach((item) => {
+            if(!(item == ' ' || item == ''|| item == null)){
+                options[item] = 0
+            }
+        });
         var Poll = {
             'question': question,
             'options': options,
@@ -30,6 +36,7 @@ pollRouter.post("/create", async (req, res) => {
             'IPCheck': IPCheck,
             'votedIPs': []
         };
+        console.log(Poll);
         await database.collection("Polls").insertOne(Poll);
         res.json({ "message": "Success" });
 
@@ -45,7 +52,7 @@ pollRouter.get('/getAll', async (req, res) => {
         const database = mainApp.database;
         var collection = database.collection('Polls');
 
-        var polls = await collection.find({}).toArray();;
+        var polls = await (await collection.find({}).toArray()).reverse();
         res.json({ 'polls': polls });
     } catch (error) {
         console.log(error);
@@ -61,7 +68,7 @@ pollRouter.get('/getSingle/:id', async (req, res) => {
         var wantedPoll = await collection.find({ '_id': ObjectID(req.params.id) }).toArray();
         res.json({ 'poll': wantedPoll });
 
-    } catch (error) {   
+    } catch (error) {
         console.log(error);
         res.json({ 'message': 'Failed' })
     }
@@ -75,12 +82,11 @@ pollRouter.post('/vote', async (req, res) => {
         const mainApp = require('./index');
         const database = mainApp.database;
         var collection = database.collection('Polls');
-
+        console.log(req.body);
         var pollId = req.body.pollId;
         var selectedOptionIndex = req.body.selectedOptionIndex;
         var userIP = req.ip.split(':')[3];
-
-        await collection.findOne({ '_id': ObjectID(pollId) }, (err, poll) => {
+        collection.findOne({ '_id': ObjectID(pollId) }, (err, poll) => {
             if (poll.IPCheck && poll.votedIPs.some((alreadyUserIP) => userIP === alreadyUserIP)) {
                 res.json({ 'message': 'ALready voted from this IP' });
                 return
